@@ -7,9 +7,9 @@
 u''(x) = -π(u(x)+1)/4
 边界条件：u(0) = 1, u(1) = 1
 
-学生姓名：[YOUR_NAME]
-学号：[YOUR_STUDENT_ID]
-完成日期：[COMPLETION_DATE]
+学生姓名：[叶育恒]
+学号：[20221050065]
+完成日期：[2025-6-4]
 """
 
 import numpy as np
@@ -41,7 +41,7 @@ def ode_system_shooting(t, y):
     """
     # TODO: Implement ODE system for shooting method
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement ode_system_shooting function")
+    return [y[1], -np.pi * (y[0] + 1) / 4]
 
 
 def boundary_conditions_scipy(ya, yb):
@@ -63,7 +63,7 @@ def boundary_conditions_scipy(ya, yb):
     """
     # TODO: Implement boundary conditions for scipy.solve_bvp
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement boundary_conditions_scipy function")
+    return np.array([ya[0] - 1, yb[0] - 1])
 
 
 def ode_system_scipy(x, y):
@@ -84,7 +84,7 @@ def ode_system_scipy(x, y):
     """
     # TODO: Implement ODE system for scipy.solve_bvp
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement ode_system_scipy function")
+    return np.vstack((y[1], -np.pi * (y[0] + 1) / 4))
 
 
 def solve_bvp_shooting_method(x_span, boundary_conditions, n_points=100, max_iterations=10, tolerance=1e-6):
@@ -118,7 +118,41 @@ def solve_bvp_shooting_method(x_span, boundary_conditions, n_points=100, max_ite
     
     # TODO: Return solution arrays
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement solve_bvp_shooting_method function")
+    if not (isinstance(x_span, (tuple, list)) and len(x_span) == 2 and x_span[1] > x_span[0]):
+        raise ValueError("x_span must be a tuple (x0, x1) with x1 > x0")
+    if not (isinstance(boundary_conditions, (tuple, list)) and len(boundary_conditions) == 2):
+        raise ValueError("boundary_conditions must be a tuple (u0, u1)")
+    if n_points < 3:
+        raise ValueError("n_points must be >= 3")
+
+    x0, x1 = x_span
+    u0, u1 = boundary_conditions
+    x = np.linspace(x0, x1, n_points)
+
+    # Initial slope guesses
+    m1 = 0.0
+    m2 = 1.0
+    y0_1 = [u0, m1]
+    y0_2 = [u0, m2]
+
+    sol1 = odeint(lambda y, t: ode_system_shooting(t, y), y0_1, x)
+    sol2 = odeint(lambda y, t: ode_system_shooting(t, y), y0_2, x)
+    f1 = sol1[-1, 0] - u1
+    f2 = sol2[-1, 0] - u1
+
+    for _ in range(max_iterations):
+        if abs(f2 - f1) < 1e-14:
+            break
+        m_new = m2 - f2 * (m2 - m1) / (f2 - f1)
+        y0_new = [u0, m_new]
+        sol_new = odeint(lambda y, t: ode_system_shooting(t, y), y0_new, x)
+        f_new = sol_new[-1, 0] - u1
+        if abs(f_new) < tolerance:
+            return x, sol_new[:, 0]
+        m1, f1 = m2, f2
+        m2, f2 = m_new, f_new
+    # If not converged, return last attempt
+    return x, sol_new[:, 0]
 
 
 def solve_bvp_scipy_wrapper(x_span, boundary_conditions, n_points=50):
@@ -142,7 +176,27 @@ def solve_bvp_scipy_wrapper(x_span, boundary_conditions, n_points=50):
     
     # TODO: Extract and return solution
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement solve_bvp_scipy_wrapper function")
+    if not (isinstance(x_span, (tuple, list)) and len(x_span) == 2 and x_span[1] > x_span[0]):
+        raise ValueError("x_span must be a tuple (x0, x1) with x1 > x0")
+    if not (isinstance(boundary_conditions, (tuple, list)) and len(boundary_conditions) == 2):
+        raise ValueError("boundary_conditions must be a tuple (u0, u1)")
+    if n_points < 3:
+        raise ValueError("n_points must be >= 3")
+
+    x0, x1 = x_span
+    u0, u1 = boundary_conditions
+    x = np.linspace(x0, x1, n_points)
+    # Initial guess: linear interpolation
+    y_guess = np.zeros((2, n_points))
+    y_guess[0] = np.linspace(u0, u1, n_points)
+    y_guess[1] = 0.0
+
+    sol = solve_bvp(ode_system_scipy, boundary_conditions_scipy, x, y_guess)
+    if not sol.success:
+        raise RuntimeError("solve_bvp did not converge")
+    x_dense = np.linspace(x0, x1, n_points)
+    y_dense = sol.sol(x_dense)[0]
+    return x_dense, y_dense
 
 
 def compare_methods_and_plot(x_span=(0, 1), boundary_conditions=(1, 1), n_points=100):
@@ -168,7 +222,52 @@ def compare_methods_and_plot(x_span=(0, 1), boundary_conditions=(1, 1), n_points
     
     # TODO: Return analysis results
     # [STUDENT_CODE_HERE]
-    raise NotImplementedError("Please implement compare_methods_and_plot function")
+    x_shoot, y_shoot = solve_bvp_shooting_method(x_span, boundary_conditions, n_points)
+    x_scipy, y_scipy = solve_bvp_scipy_wrapper(x_span, boundary_conditions, n_points)
+    # Interpolate for difference
+    y_scipy_interp = np.interp(x_shoot, x_scipy, y_scipy)
+    diff = y_shoot - y_scipy_interp
+    max_diff = np.max(np.abs(diff))
+    rms_diff = np.sqrt(np.mean(diff**2))
+
+    plt.figure(figsize=(12, 8))
+    plt.subplot(2, 1, 1)
+    plt.plot(x_shoot, y_shoot, 'b-', linewidth=2, label='Shooting Method')
+    plt.plot(x_scipy, y_scipy, 'r--', linewidth=2, label='scipy.solve_bvp')
+    plt.plot([x_span[0], x_span[1]], [boundary_conditions[0], boundary_conditions[1]], 
+             'ko', markersize=8, label='Boundary Conditions')
+    plt.xlabel('x')
+    plt.ylabel('u(x)')
+    plt.title('Comparison of Shooting Method and scipy.solve_bvp')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    plt.subplot(2, 1, 2)
+    plt.plot(x_shoot, diff, 'g-', linewidth=2)
+    plt.xlabel('x')
+    plt.ylabel('Difference (Shooting - scipy)')
+    plt.title(f'Solution Difference (Max: {max_diff:.2e}, RMS: {rms_diff:.2e})')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    print("\nSolution Analysis:")
+    print(f"Maximum difference: {max_diff:.2e}")
+    print(f"RMS difference: {rms_diff:.2e}")
+    print(f"Shooting method: u({x_span[0]}) = {y_shoot[0]:.6f}, u({x_span[1]}) = {y_shoot[-1]:.6f}")
+    print(f"scipy.solve_bvp: u({x_span[0]}) = {y_scipy[0]:.6f}, u({x_span[1]}) = {y_scipy[-1]:.6f}")
+    print(f"Target: u({x_span[0]}) = {boundary_conditions[0]}, u({x_span[1]}) = {boundary_conditions[1]}")
+
+    return {
+        'x_shooting': x_shoot,
+        'y_shooting': y_shoot,
+        'x_scipy': x_scipy,
+        'y_scipy': y_scipy,
+        'max_difference': max_diff,
+        'rms_difference': rms_diff,
+        'boundary_error_shooting': [abs(y_shoot[0] - boundary_conditions[0]), abs(y_shoot[-1] - boundary_conditions[1])],
+        'boundary_error_scipy': [abs(y_scipy[0] - boundary_conditions[0]), abs(y_scipy[-1] - boundary_conditions[1])]
+    }
 
 
 # Test functions for development and debugging
