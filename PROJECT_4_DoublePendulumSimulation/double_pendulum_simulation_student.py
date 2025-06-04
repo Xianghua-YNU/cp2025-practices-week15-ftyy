@@ -1,5 +1,4 @@
 """
-
 学生模板：双摆模拟
 课程：计算物理
 说明：请实现标记为 TODO 的函数。
@@ -115,7 +114,7 @@ def solve_double_pendulum(initial_conditions, t_span, t_points, L_param=L_CONST,
 
     # TODO: 调用 odeint 求解微分方程。
     # 使用 derivatives。请记住在 args 中为 L1 和 L2 传递 L_param，为 m1 和 m2 传递 M_CONST。
-    sol_arr = odeint(derivatives, y0, t_arr, args=(L_param, L_param, M_CONST, M_CONST, g_param), rtol=1e-5, atol=1e-5)
+    sol_arr = odeint(derivatives, y0, t_arr, args=(L_param, L_param, M_CONST, M_CONST, g_param), rtol=1e-9, atol=1e-9)
     return t_arr, sol_arr # 取消注释并返回结果
 
 def calculate_energy(sol_arr, L_param=L_CONST, m_param=M_CONST, g_param=G_CONST):
