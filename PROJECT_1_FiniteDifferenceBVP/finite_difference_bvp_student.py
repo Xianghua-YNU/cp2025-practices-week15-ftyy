@@ -19,127 +19,81 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_bvp
 from scipy.linalg import solve
 
-
-# ============================================================================
+# ============================================================================ 
 # 方法1：有限差分法 (Finite Difference Method)
 # ============================================================================
 
 def solve_bvp_finite_difference(n):
     """
     使用有限差分法求解二阶常微分方程边值问题。
-    
     方程：y''(x) + sin(x) * y'(x) + exp(x) * y(x) = x^2
     边界条件：y(0) = 0, y(5) = 3
-    
-    Args:
-        n (int): 内部网格点数量
-    
-    Returns:
-        tuple: (x_grid, y_solution)
-            x_grid (np.ndarray): 包含边界点的完整网格
-            y_solution (np.ndarray): 对应的解值
-    
-    TODO: 实现有限差分法
-    Hints:
-    1. 创建网格点 x_i = i*h, i=0,1,...,n+1, 其中 h = 5/(n+1)
-    2. 对于内部点 i=1,2,...,n，使用中心差分近似：
-       y''_i ≈ (y_{i+1} - 2*y_i + y_{i-1}) / h^2
-       y'_i ≈ (y_{i+1} - y_{i-1}) / (2*h)
-    3. 构建线性系统 A*y = b，其中 y = [y_1, y_2, ..., y_n]
-    4. 边界条件：y_0 = 0, y_{n+1} = 3
-    5. 对于每个内部点，重新整理方程得到系数
-    6. 处理边界条件对右端向量的影响
     """
-    # TODO: 在此实现有限差分法 (预计30-40行代码)
-    # [STUDENT_CODE_HERE]
-    
-    raise NotImplementedError("请在此处实现有限差分法")
+    # 1. 网格
+    a, b = 0, 5
+    h = (b - a) / (n + 1)
+    x = np.linspace(a, b, n + 2)  # 包含边界点
+    # 2. 系数矩阵和右端项
+    A = np.zeros((n, n))
+    b_vec = np.zeros(n)
+    for i in range(n):
+        xi = x[i + 1]
+        sinx = np.sin(xi)
+        expx = np.exp(xi)
+        # 三对角系数
+        if i > 0:
+            A[i, i - 1] = (1 / h**2) - (sinx / (2 * h))
+        A[i, i] = (-2 / h**2) + expx
+        if i < n - 1:
+            A[i, i + 1] = (1 / h**2) + (sinx / (2 * h))
+        # 右端项
+        b_vec[i] = xi**2
+    # 3. 边界条件
+    # y_0 = 0, y_{n+1} = 3
+    b_vec[0] -= ((1 / h**2) - (np.sin(x[1]) / (2 * h))) * 0  # y_0 = 0
+    b_vec[-1] -= ((1 / h**2) + (np.sin(x[-2]) / (2 * h))) * 3  # y_{n+1} = 3
+    # 4. 求解线性方程组
+    y_inner = solve(A, b_vec)
+    # 5. 拼接边界
+    y_full = np.zeros(n + 2)
+    y_full[0] = 0
+    y_full[1:-1] = y_inner
+    y_full[-1] = 3
+    return x, y_full
 
-
-# ============================================================================
+# ============================================================================ 
 # 方法2：scipy.integrate.solve_bvp 方法
 # ============================================================================
 
 def ode_system_for_solve_bvp(x, y):
     """
     为 scipy.integrate.solve_bvp 定义ODE系统。
-    
-    将二阶ODE转换为一阶系统：
-    y[0] = y(x)
-    y[1] = y'(x)
-    
-    系统方程：
-    dy[0]/dx = y[1]
-    dy[1]/dx = -sin(x) * y[1] - exp(x) * y[0] + x^2
-    
-    Args:
-        x (float or array): 自变量
-        y (array): 状态变量 [y, y']
-    
-    Returns:
-        array: 导数 [dy/dx, dy'/dx]
-    
-    TODO: 实现ODE系统的右端项
-    Hints:
-    1. 提取 y[0] 和 y[1] 分别表示 y(x) 和 y'(x)
-    2. 根据一阶系统方程计算导数
-    3. 使用 np.vstack 组合返回结果
     """
-    # TODO: 在此实现一阶ODE系统 (预计5-8行代码)
-    # [STUDENT_CODE_HERE]
-    
-    raise NotImplementedError("请在此处实现ODE系统")
-
+    dy0 = y[1]
+    dy1 = -np.sin(x) * y[1] - np.exp(x) * y[0] + x**2
+    return np.vstack((dy0, dy1))
 
 def boundary_conditions_for_solve_bvp(ya, yb):
     """
     为 scipy.integrate.solve_bvp 定义边界条件。
-    
-    Args:
-        ya (array): 左边界处的状态 [y(0), y'(0)]
-        yb (array): 右边界处的状态 [y(5), y'(5)]
-    
-    Returns:
-        array: 边界条件残差 [y(0) - 0, y(5) - 3]
-    
-    TODO: 实现边界条件
-    Hints:
-    1. ya[0] 是左边界的 y 值，应该等于 0
-    2. yb[0] 是右边界的 y 值，应该等于 3
-    3. 返回残差数组
     """
-    # TODO: 在此实现边界条件 (预计1-2行代码)
-    # [STUDENT_CODE_HERE]
-    
-    raise NotImplementedError("请在此处实现边界条件")
-
+    return np.array([ya[0] - 0, yb[0] - 3])
 
 def solve_bvp_scipy(n_initial_points=11):
     """
     使用 scipy.integrate.solve_bvp 求解BVP。
-    
-    Args:
-        n_initial_points (int): 初始网格点数
-    
-    Returns:
-        tuple: (x_solution, y_solution)
-            x_solution (np.ndarray): 解的 x 坐标数组
-            y_solution (np.ndarray): 解的 y 坐标数组
-    
-    TODO: 实现 solve_bvp 方法
-    Hints:
-    1. 创建初始网格 x_initial
-    2. 创建初始猜测 y_initial (2×n 数组)
-    3. 调用 solve_bvp 函数
-    4. 检查求解是否成功并提取解
     """
-    # TODO: 在此实现 solve_bvp 方法 (预计10-15行代码)
-    # [STUDENT_CODE_HERE]
-    
-    raise NotImplementedError("请在此处实现 solve_bvp 方法")
+    x_init = np.linspace(0, 5, n_initial_points)
+    # 初始猜测：线性插值
+    y_init = np.zeros((2, n_initial_points))
+    y_init[0] = 3 * x_init / 5  # y(x) 线性猜测
+    y_init[1] = 3 / 5  # y'(x) 线性猜测
+    sol = solve_bvp(ode_system_for_solve_bvp, boundary_conditions_for_solve_bvp, x_init, y_init)
+    if not sol.success:
+        raise RuntimeError("solve_bvp failed: " + sol.message)
+    return sol.x, sol.y[0]
 
-
-# ============================================================================
+# ============================================================================ 
 # 主程序：测试和比较两种方法
 # ============================================================================
 
